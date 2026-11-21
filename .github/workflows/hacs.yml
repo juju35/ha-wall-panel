@@ -33,7 +33,22 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
+      # A brand-new repository has no release yet, so no built card for HACS to find: the first release must not
+      # wait on a check that only it can satisfy. Every later run validates as usual.
+      - name: Released before?
+        id: released
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh api "repos/${{ github.repository }}/releases/latest" --silent 2>/dev/null; then
+            echo "yes=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::No release yet: HACS validation skipped until the first release is published."
+            echo "yes=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: HACS validation
+        if: steps.released.outputs.yes == 'true'
         uses: hacs/action@1ebf01c408f29afcb6406bd431bc98fd8cbb15aa # main
         with:
           category: plugin
