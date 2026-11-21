@@ -158,3 +158,25 @@ test("updates: the watched set holds the rooms' entities, a plug's power sensor 
   // Built once per registry.
   assert.equal(W.wpAreaEntities(hass), W.wpAreaEntities(hass));
 });
+
+test("areas with nothing to show are left out unless asked for", () => {
+  const hass = makeHass();
+  hass.areas.garden = { area_id: "garden", name: "Garden" };
+  hass.areas.attic = { area_id: "attic", name: "Attic" };
+  hass.entities["sensor.attic_battery"] = { area_id: "attic" };
+  hass.states["sensor.attic_battery"] = { entity_id: "sensor.attic_battery", state: "80", attributes: { device_class: "battery" } };
+  const ids = (config) => W.wpRooms(hass, config).map((r) => r.id);
+  assert.ok(!ids({}).includes("garden") && !ids({}).includes("attic"));
+  assert.ok(ids({}).includes("living_room"));
+  assert.ok(ids({ show_empty_areas: true }).includes("garden"));
+  assert.ok(ids({ areas: ["garden", "living_room"] }).includes("garden"));
+  assert.ok(ids({ rooms: { garden: { include: ["light.lamp"] } } }).includes("garden"));
+});
+
+test("screensaver: night follows the dark theme, always always, false never", () => {
+  assert.equal(W.wpSaverOn("night", true), true);
+  assert.equal(W.wpSaverOn(undefined, true), true);
+  assert.equal(W.wpSaverOn("night", false), false);
+  assert.equal(W.wpSaverOn("always", false), true);
+  assert.equal(W.wpSaverOn(false, true), false);
+});

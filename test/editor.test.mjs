@@ -40,3 +40,8 @@ test("language and height: in the form; auto and empty leave them out", () => {
   assert.deepEqual(changed({ language: "fr" }, { language: "auto", height: "" }), {});
   assert.deepEqual(changed({}, { language: "de", height: "600px" }), { language: "de", height: "600px" });
 });
+
+test("screensaver and show_empty_areas: off is false, defaults stay out", () => {
+  assert.deepEqual(changed({}, { screensaver: "off", show_empty_areas: false }), { screensaver: false });
+  assert.deepEqual(changed({ screensaver: false }, { screensaver: "night", show_empty_areas: true }), { show_empty_areas: true });
+});
