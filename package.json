@@ -15,7 +15,7 @@
     "build": "node scripts/build.mjs",
     "check": "node scripts/build.mjs && node --check dist/ha-wall-panel.js",
     "test": "node --test test/*.test.mjs",
-    "screenshots": "npm run build && node scripts/screenshots/rooms.mjs"
+    "screenshots": "npm run build && node scripts/screenshots/rooms.mjs && node scripts/screenshots/animations.mjs"
   },
   "license": "MIT",
   "devDependencies": {

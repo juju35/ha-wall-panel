@@ -76,7 +76,7 @@ const E = [
   ["sensor.office_temperature", "office", "21.6", { device_class: "temperature", unit_of_measurement: "°C" }],
 ];
 
-const hass = {
+export const hass = {
   language: "en",
   locale: { language: "en" },
   user: { is_admin: true },
@@ -93,6 +93,8 @@ for (const [id, area, state, attrs, device] of E) {
   if (device) hass.devices[device] = { area_id: area || E.find((e) => e[4] === device && e[1])?.[1] };
 }
 
+// Run directly: render the stills (animations.mjs imports the mock home only).
+const direct = import.meta.url === `file://${process.argv[1]}`;
 const SQ = { w: 480, h: 480 };
 const shots = [
   ...pair("square-home", SQ),
@@ -104,4 +106,4 @@ const shots = [
   ...pair("detail-climate", { ...SQ, room: "bedroom", popup: ["detail", "climate.bedroom"] }),
   ...pair("customize", { ...SQ, room: "living_room", popup: ["edit", "switch.living_room_tv_plug"] }),
 ];
-await shoot({ shots, hass });
+if (direct) await shoot({ shots, hass });

@@ -29,6 +29,7 @@ A whole Home Assistant dashboard for **small wall panels** — Sonoff NSPanel Pr
 - **Tap** toggles a light or a plug and opens the controls of the rest; **press and hold** opens the controls of anything, with **Customize**: size (normal, large, hero), room, pin, show / hide, group — saved to the dashboard.
 - **Kiosk**: Home Assistant's toolbar and sidebar are hidden on the panel (not in edit mode).
 - **Back to the start screen** after a while without a touch; each panel can open on its own room (`?room=kitchen`).
+- **Visual editor** for the simple options; the per-room settings stay in YAML.
 - **Light and dark**, the night pictures following the theme; 22 languages.
 
 ## Supported screens
@@ -100,6 +101,8 @@ or, in a view: `strategy: { type: custom:wall-panel }`.
 
 ### Options
 
+The visual editor covers every option below except `areas`, `exclude_areas`, `rooms` and the per-layout form of `navigation`, which are YAML only (the editor keeps them as they are).
+
 | Option | Default | Description |
 |---|---|---|
 | `start_room` | `home` | The screen shown first, and after `idle_return`: `home` or an area ID. The page address wins: `…/panel?room=kitchen` (area ID or name) opens a panel on its room |
@@ -109,8 +112,8 @@ or, in a view: `strategy: { type: custom:wall-panel }`.
 | `kiosk` | `true` | Hide Home Assistant's toolbar and sidebar while the panel is shown (never in edit mode; `?kiosk=0` in the address turns it off) |
 | `hero` | `auto` | The hero tile of every room: `auto`, or `false` for none (per room: `rooms.<area>.hero`) |
 | `text_size` | `normal` | `large`: bigger names and states, taller tiles |
-| `areas` | all | The rooms shown, in this order (area IDs); default: every area, by floor then name |
-| `exclude_areas` | — | Areas left out |
+| `areas` | all | YAML only. The rooms shown, in this order (area IDs); default: every area, by floor then name |
+| `exclude_areas` | — | YAML only. Areas left out |
 | `title` | location name | The home screen's title |
 | `illustration_theme` | theme | `day` or `night` forces the pictures; by default the night pictures follow Home Assistant's dark theme |
 | `language` | Home Assistant's | Forces a language |
@@ -192,13 +195,25 @@ An administrator's changes are saved to the dashboard at once (the strategy's op
 |---|---|---|---|---|
 | <img src="https://raw.githubusercontent.com/juju35/ha-wall-panel/main/screenshots/portrait-living.png" alt="Portrait" width="150"> | <img src="https://raw.githubusercontent.com/juju35/ha-wall-panel/main/screenshots/detail-cover.png" alt="Cover controls" width="200"> | <img src="https://raw.githubusercontent.com/juju35/ha-wall-panel/main/screenshots/detail-climate.png" alt="Thermostat controls" width="200"> | <img src="https://raw.githubusercontent.com/juju35/ha-wall-panel/main/screenshots/customize.png" alt="Customize a tile" width="200"> | <img src="https://raw.githubusercontent.com/juju35/ha-wall-panel/main/screenshots/customize-dark.png" alt="Customize a tile, dark" width="200"> |
 
+### Animations
+
+The header pictures move with the room's state (they stop when the system asks for reduced motion).
+
+| Scene | Light | Dark |
+|---|---|---|
+| Home: rooms lit and flagged | <img src="https://raw.githubusercontent.com/juju35/ha-wall-panel/main/screenshots/banner-home.gif" alt="Home header" width="360"> | <img src="https://raw.githubusercontent.com/juju35/ha-wall-panel/main/screenshots/banner-home-dark.gif" alt="Home header, dark" width="360"> |
+| Lights: the lamps that are on glow in their colour | <img src="https://raw.githubusercontent.com/juju35/ha-wall-panel/main/screenshots/banner-lights.gif" alt="Lights header" width="360"> | <img src="https://raw.githubusercontent.com/juju35/ha-wall-panel/main/screenshots/banner-lights-dark.gif" alt="Lights header, dark" width="360"> |
+| Sensors: a door left open, motion detected | <img src="https://raw.githubusercontent.com/juju35/ha-wall-panel/main/screenshots/banner-sensors.gif" alt="Sensors header" width="360"> | <img src="https://raw.githubusercontent.com/juju35/ha-wall-panel/main/screenshots/banner-sensors-dark.gif" alt="Sensors header, dark" width="360"> |
+| Humidity above the threshold | <img src="https://raw.githubusercontent.com/juju35/ha-wall-panel/main/screenshots/banner-humid.gif" alt="Humid header" width="360"> | <img src="https://raw.githubusercontent.com/juju35/ha-wall-panel/main/screenshots/banner-humid-dark.gif" alt="Humid header, dark" width="360"> |
+| Stale air (CO₂) | <img src="https://raw.githubusercontent.com/juju35/ha-wall-panel/main/screenshots/banner-air.gif" alt="Stale air header" width="360"> | <img src="https://raw.githubusercontent.com/juju35/ha-wall-panel/main/screenshots/banner-air-dark.gif" alt="Stale air header, dark" width="360"> |
+
 ## Development
 
 ```sh
 npm install
 npm run build        # dist/ha-wall-panel.js + translation files
 npm test             # unit tests (detection, customizing, translations)
-npm run screenshots  # README captures (Playwright; CHROMIUM_PATH=… for a local Chrome)
+npm run screenshots  # README captures and GIFs (Playwright + ffmpeg; CHROMIUM_PATH=… for a local Chrome)
 ```
 
 The room pictures come from [ha-room-card](https://github.com/juju35/ha-room-card) and the cover pictures from [ha-cover-card](https://github.com/juju35/ha-cover-card), copied into `src/scene.js` and `src/cover-scene.js`.

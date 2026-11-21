@@ -76,40 +76,46 @@ export const writeIfChanged = async (page, path, png) => {
   return true;
 };
 
-// Renders each shot ({ file, theme, w, h, config, room, popup }) into screenshots/<file>.png.
+// Opens a page holding the card in the state a shot describes ({ theme, w, h, config, room, popup }).
+export const render = async (browser, s, hass, icons = iconsFor()) => {
+  const context = await browser.newContext({ deviceScaleFactor: 2, viewport: { width: s.w, height: s.h }, locale: "en-GB", timezoneId: "UTC" });
+  const page = await context.newPage();
+  // A fixed clock: the banner shows the time, and the comparison is exact.
+  await page.clock.setFixedTime(new Date("2026-11-21T14:32:00Z"));
+  page.on("pageerror", (err) => console.error(`pageerror (${s.file}): ${err.message}`));
+  await page.setContent(pageHtml(s.theme, s.w, s.h));
+  await page.addScriptTag({ content: haIcon(icons) });
+  await page.addScriptTag({ content: cardJs() });
+  await page.evaluate(
+    ({ hass, s }) => {
+      const el = document.createElement("wall-panel-card");
+      el.setConfig({ type: "custom:wall-panel-card", kiosk: false, height: `${s.h}px`, idle_return: 0, ...s.config });
+      const fmt = (v) => String(v).replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
+      el.hass = {
+        ...hass,
+        themes: { darkMode: s.theme === "dark" },
+        formatEntityState: (st) => (st.attributes.unit_of_measurement ? `${st.state} ${st.attributes.unit_of_measurement}` : fmt(st.state)),
+        formatEntityAttributeValue: (_st, _a, v) => fmt(v),
+        callService: async () => {},
+        callWS: async () => ({}),
+      };
+      document.getElementById("root").appendChild(el);
+      el._room = s.room || "home";
+      el._render(true);
+      if (s.popup) el._openPopup(s.popup[0], s.popup[1]);
+    },
+    { hass, s },
+  );
+  await page.waitForTimeout(500);
+  return { page, context };
+};
+
+// Renders each shot into screenshots/<file>.png.
 export const shoot = async ({ shots, hass }) => {
   const icons = iconsFor();
   const browser = await launch();
   for (const s of shots) {
-    const context = await browser.newContext({ deviceScaleFactor: 2, viewport: { width: s.w, height: s.h }, locale: "en-GB", timezoneId: "UTC" });
-    const page = await context.newPage();
-    // A fixed clock: the banner shows the time, and the comparison is exact.
-    await page.clock.setFixedTime(new Date("2026-11-21T14:32:00Z"));
-    page.on("pageerror", (err) => console.error(`pageerror (${s.file}): ${err.message}`));
-    await page.setContent(pageHtml(s.theme, s.w, s.h));
-    await page.addScriptTag({ content: haIcon(icons) });
-    await page.addScriptTag({ content: cardJs() });
-    await page.evaluate(
-      ({ hass, s }) => {
-        const el = document.createElement("wall-panel-card");
-        el.setConfig({ type: "custom:wall-panel-card", kiosk: false, height: `${s.h}px`, idle_return: 0, ...s.config });
-        const fmt = (v) => String(v).replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
-        el.hass = {
-          ...hass,
-          themes: { darkMode: s.theme === "dark" },
-          formatEntityState: (st) => (st.attributes.unit_of_measurement ? `${st.state} ${st.attributes.unit_of_measurement}` : fmt(st.state)),
-          formatEntityAttributeValue: (_st, _a, v) => fmt(v),
-          callService: async () => {},
-          callWS: async () => ({}),
-        };
-        document.getElementById("root").appendChild(el);
-        el._room = s.room || "home";
-        el._render(true);
-        if (s.popup) el._openPopup(s.popup[0], s.popup[1]);
-      },
-      { hass, s },
-    );
-    await page.waitForTimeout(500);
+    const { page, context } = await render(browser, s, hass, icons);
     const out = `screenshots/${s.file}.png`;
     const png = await page.screenshot({ clip: { x: 0, y: 0, width: s.w, height: s.h }, animations: "disabled" });
     console.log(`${out}${(await writeIfChanged(page, `${root}${out}`, png)) ? "" : " (unchanged)"}`);

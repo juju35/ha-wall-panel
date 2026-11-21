@@ -9,6 +9,7 @@ test("no orphan screenshot", () => {
   const listed = new Set();
   for (const m of script.matchAll(/pair\(\s*[`"]([^`"]+)[`"]/g)) listed.add(m[1]);
   for (const r of ["living_room", "kitchen", "bedroom", "kids_room", "bathroom", "entrance", "office"]) listed.add(`square-${r.replace("_room", "").replace("_", "-")}`);
+  for (const n of ["banner-home", "banner-lights", "banner-sensors", "banner-humid", "banner-air"]) listed.add(n);
   const files = readdirSync(new URL("../screenshots/", import.meta.url)).filter((f) => f.endsWith(".png") || f.endsWith(".gif"));
   const orphans = files.filter((f) => !listed.has(f.replace(/(-dark)?\.(png|gif)$/, "")));
   assert.deepEqual(orphans, []);

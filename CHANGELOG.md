@@ -9,3 +9,4 @@
 - Square, landscape and portrait layouts from the screen's shape; room bar at the bottom or on the left (`navigation`), configurable per layout.
 - Tap to toggle, press and hold for the device's controls and **Customize** (size, room, pin, show, group, reset), saved to the dashboard or shown as YAML.
 - Kiosk mode, return to the start screen after a while, `?room=` per panel, light and dark, 22 languages.
+- Visual editor for the simple options (per-room settings stay in YAML); animated header GIFs in the README.
