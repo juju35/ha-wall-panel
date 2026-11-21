@@ -90,6 +90,72 @@ for (const [label, room, w, h] of [
   await context.close();
 }
 
+// Every room in view on the home screen (7 rooms; a 360 × 360 screen scrolls, 64 px tiles do not fit 4 rows there); four columns and 128 px rows on a large landscape.
+for (const [label, w, h] of [
+  ["square 480", 480, 480],
+  ["landscape 720 × 360", 720, 360],
+  ["portrait 360 × 720", 360, 720],
+  ["large landscape 1440 × 720", 1440, 720],
+]) {
+  const { page, context } = await render(browser, { file: label, theme: "light", w, h, room: "home" }, hass);
+  const r = await page.evaluate(() => {
+    const sr = document.querySelector("wall-panel-card").shadowRoot;
+    const body = sr.querySelector(".body").getBoundingClientRect();
+    const tiles = [...sr.querySelectorAll(".tile.room")].map((t) => t.getBoundingClientRect());
+    const chips = [...sr.querySelectorAll(".chip")].map((c) => c.getBoundingClientRect().height);
+    return { hidden: tiles.filter((t) => t.bottom > body.bottom + 0.5).length, n: tiles.length, minH: Math.min(...tiles.map((t) => t.height)), chips };
+  });
+  check(r.hidden === 0 && r.minH >= 64, `${label}: all ${r.n} rooms in view on the home screen (${r.hidden} below the fold, rows ${Math.round(r.minH)} px)`);
+  check(r.chips.length > 0 && r.chips.every((c) => c >= 48), `${label}: alerts as chips of 48 px or more`);
+  await context.close();
+}
+{
+  const { page, context } = await render(browser, { file: "wide", theme: "light", w: 1440, h: 720, room: "living_room" }, hass);
+  const r = await page.evaluate(() => {
+    const sr = document.querySelector("wall-panel-card").shadowRoot;
+    const g = sr.querySelector(".body .grid");
+    return { c4: g.classList.contains("c4"), row: g.style.getPropertyValue("--row"), wide: sr.querySelector(".scr").classList.contains("wide") };
+  });
+  check(r.c4 && r.wide && r.row === "128px", `large landscape: 4 columns, 128 px rows (${r.row})`);
+  await context.close();
+}
+
+// Night screensaver: shows after the idle delay with the dark theme, not with the light one; a tap wakes it and runs
+// nothing underneath; then the panel works as before.
+for (const theme of ["dark", "light"]) {
+  const { page, context } = await render(browser, { file: `saver-${theme}`, theme, w: 480, h: 480, room: "office", config: { idle_return: 1, start_room: "office" } }, hass);
+  await page.evaluate(() => {
+    const el = document.querySelector("wall-panel-card");
+    el._calls = [];
+    el._hass = { ...el._hass, callService: async (d, s) => el._calls.push(`${d}.${s}`) };
+    el._resetIdle();
+  });
+  await page.waitForTimeout(1400);
+  const shown = await page.evaluate(() => !!document.querySelector("wall-panel-card").shadowRoot.querySelector(".saver"));
+  if (theme === "light") {
+    check(!shown, "screensaver: none with the light theme");
+    await context.close();
+    continue;
+  }
+  check(shown, "screensaver: shown after the idle delay with the dark theme");
+  const at = await page.evaluate(() => {
+    const r = document.querySelector("wall-panel-card").shadowRoot.querySelector('[data-id="switch.office_pc_plug"]').getBoundingClientRect();
+    return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+  });
+  await page.mouse.click(at.x, at.y);
+  await page.waitForTimeout(100);
+  const after = await page.evaluate(() => {
+    const el = document.querySelector("wall-panel-card");
+    return { saver: !!el.shadowRoot.querySelector(".saver"), calls: [...el._calls] };
+  });
+  check(!after.saver && after.calls.length === 0, `screensaver: a tap wakes it and runs nothing (${after.calls.join(", ") || "no call"})`);
+  await page.mouse.click(at.x, at.y);
+  await page.waitForTimeout(100);
+  const calls = await page.evaluate(() => document.querySelector("wall-panel-card")._calls);
+  check(calls.includes("homeassistant.toggle"), "screensaver: the next tap works as usual");
+  await context.close();
+}
+
 await browser.close();
 if (failures.length) {
   console.error(`${failures.length} stability check(s) failed`);

@@ -78,7 +78,23 @@ const wpReveal = (el) => {
   if (bar.scrollWidth > bar.clientWidth) bar.scrollLeft += r.left + r.width / 2 - (b.left + b.width / 2);
   if (bar.scrollHeight > bar.clientHeight) bar.scrollTop += r.top + r.height / 2 - (b.top + b.height / 2);
 };
-const WP_DEFAULTS = { start_room: "home", navigation: "auto", device: "auto", idle_return: 120, kiosk: true, hero: "auto", text_size: "normal", animations: true, pixel_shift: true };
+const WP_DEFAULTS = {
+  start_room: "home",
+  navigation: "auto",
+  device: "auto",
+  idle_return: 120,
+  kiosk: true,
+  hero: "auto",
+  text_size: "normal",
+  animations: true,
+  pixel_shift: true,
+  screensaver: "night",
+  show_empty_areas: false,
+};
+// A large landscape screen (the X2i at 1× density, 1440 × 720 CSS px): four columns and bigger tiles.
+const WP_WIDE_MIN = 1000;
+// Whether the night screensaver shows: `screensaver` night (with Home Assistant's dark theme) | always | false.
+const wpSaverOn = (mode, dark) => mode === "always" || ((mode ?? "night") === "night" && !!dark);
 
 class WallPanelCard extends HTMLElement {
   static getConfigElement() {
@@ -136,7 +152,7 @@ class WallPanelCard extends HTMLElement {
   connectedCallback() {
     if (!this.shadowRoot) {
       const root = this.attachShadow({ mode: "open" });
-      root.innerHTML = `<style>${WP_STYLES}${WP_SCENE_ANIM}${SCENE_STYLE}</style><div class="scr"><div class="slot-nav"></div><div class="main"><div class="slot-banner"></div><div class="body"></div></div><div class="slot-bnav"></div><div class="veil" hidden></div><div class="slot-sheet"></div></div>`;
+      root.innerHTML = `<style>${WP_STYLES}${WP_SCENE_ANIM}${SCENE_STYLE}</style><div class="scr"><div class="slot-nav"></div><div class="main"><div class="slot-banner"></div><div class="body"></div></div><div class="slot-bnav"></div><div class="veil" hidden></div><div class="slot-sheet"></div><div class="slot-saver"></div></div>`;
       this._wire(root);
     }
     // A new shape (the X2i turned to portrait, the first layout once the card has a size) redraws; else the rows refit.
@@ -214,9 +230,11 @@ class WallPanelCard extends HTMLElement {
     if (!s || s <= 0) return;
     this._idle = setTimeout(() => {
       const start = this._startRoom();
-      if (this._room !== start || this._popup) {
+      const saver = wpSaverOn(this._config.screensaver, this._hass?.themes?.darkMode);
+      if (this._room !== start || this._popup || saver) {
         this._room = start;
         this._popup = null;
+        this._saver = saver;
         this._render();
       }
     }, s * 1000);
@@ -243,7 +261,9 @@ class WallPanelCard extends HTMLElement {
     const scr = root.querySelector(".scr");
     const layout = wpLayoutFor(this._config.device, this.clientWidth, this.clientHeight);
     const nav = wpNavFor(this._config.navigation, layout);
-    const cls = `scr ${layout}${night ? " dark" : ""}${this._config.text_size === "large" ? " lg" : ""}${this._config.animations === false ? " still" : ""}`;
+    const wide = layout === "landscape" && this.clientWidth >= WP_WIDE_MIN;
+    this._wide = wide;
+    const cls = `scr ${layout}${wide ? " wide" : ""}${night ? " dark" : ""}${this._config.text_size === "large" ? " lg" : ""}${this._config.animations === false ? " still" : ""}`;
     if (scr.className !== cls) scr.className = cls;
     this._layout = layout;
     this._drawn = true;
@@ -287,14 +307,12 @@ class WallPanelCard extends HTMLElement {
         pill: all.length ? wpT(lang, "to_check_n", { n: all.length }) : wpT(lang, "all_quiet"),
         tone: all[0]?.tone || "ok",
       });
-      const cols = layout === "landscape" ? 3 : 2;
+      // What needs a look: one row of chips (a tap opens the room); every room below, one line each, sized by _fit to
+      // fit the screen.
       const check = all
-        .slice(0, layout === "portrait" ? 4 : 3)
         .map(
           (a) =>
-            `<button class="tile t-${a.tone}" data-room="${wpEsc(a.room.id)}"><span class="ic">${wpIc(a.room.icon)}</span><span class="tx"><span class="nm">${wpEsc(`${a.room.name} · ${wpAlertText(lang, a)}`)}</span><span class="st">${wpEsc(
-              a.name || (a.value != null ? (a.key === "co2_high" ? `${wpNum(lang, a.value, 0)} ppm` : `${wpNum(lang, a.value, 0)} %`) : ""),
-            )}</span></span><span class="dot"></span></button>`,
+            `<button class="chip t-${a.tone}" data-room="${wpEsc(a.room.id)}" aria-label="${wpEsc(`${a.room.name} · ${wpAlertText(lang, a)}${a.name ? ` · ${a.name}` : ""}`)}"><span class="ic">${wpIc(a.room.icon)}</span><span class="nm">${wpEsc(`${a.room.name} · ${wpAlertText(lang, a)}`)}</span></button>`,
         )
         .join("");
       const roomTiles = rooms
@@ -303,9 +321,7 @@ class WallPanelCard extends HTMLElement {
           return `<button class="tile room ${s.tone === "idle" ? "idle" : `t-${s.tone}`}" data-room="${wpEsc(r.id)}" aria-label="${wpEsc(`${r.name}, ${s.text}`)}"><span class="ic">${wpIc(r.icon)}</span><span class="tx"><span class="nm">${wpEsc(r.name)}</span><span class="st">${wpEsc(s.text)}</span></span></button>`;
         })
         .join("");
-      body = `${check ? `<div class="sect">${wpEsc(wpT(lang, "to_check"))}</div><div class="grid c1" style="grid-template-columns:1fr;--row:64px">${check}</div>` : ""}<div class="sect">${wpEsc(
-        wpT(lang, "rooms"),
-      )}</div><div class="grid ${cols === 3 ? "c3e" : "c2"}" style="${cols === 3 ? "grid-template-columns:repeat(3,1fr);" : ""}--row:84px">${roomTiles}</div>`;
+      body = `${check ? `<div class="chips" role="group" aria-label="${wpEsc(wpT(lang, "to_check"))}">${check}</div>` : ""}<div class="sect">${wpEsc(wpT(lang, "rooms"))}</div><div class="grid rooms">${roomTiles}</div>`;
     } else {
       const room = rooms.find((r) => r.id === this._room);
       const data = datas.get(room.id);
@@ -327,7 +343,7 @@ class WallPanelCard extends HTMLElement {
       const heroView = wpHeroView(hass, lang, room, data, hero);
       const tiles = data.tiles.filter((t) => !(hero?.id && t.id === hero.id && hero.type === "entity"));
       const tall = layout === "landscape";
-      const cols = layout === "landscape" ? 3 : 2;
+      const cols = wide ? 4 : layout === "landscape" ? 3 : 2;
       body = tiles.length || heroView
         ? `<div class="grid c${cols}">${wpHeroHtml(heroView, tall)}${tiles.map((t) => wpTileHtml(hass, lang, t)).join("")}</div>`
         : `<div class="empty">${wpEsc(wpT(lang, "no_devices"))}</div>`;
@@ -342,28 +358,107 @@ class WallPanelCard extends HTMLElement {
     }
     if (changedBanner) this._fitPill();
     this._renderPopup();
+    this._renderSaver(hass, lang, rooms, datas);
+  }
+
+  // ── Night screensaver: a dim clock, the temperature and only what needs a look, on near-black; a tap wakes ──
+  _renderSaver(hass, lang, rooms, datas) {
+    const root = this.shadowRoot;
+    const on = !!this._saver && wpSaverOn(this._config.screensaver, hass.themes?.darkMode);
+    if (!on) this._saver = false;
+    let html = "";
+    if (on) {
+      // The start screen's room, else every room: its temperature, and every alert of the home.
+      const list = this._room === "home" ? rooms : rooms.filter((r) => r.id === this._room);
+      const data = list.map((r) => datas.get(r.id) || wpRoomData(hass, r, this._cfg()));
+      const temps = data.map((d) => d.env.temperature).filter((v) => v != null);
+      const hums = data.map((d) => d.env.humidity).filter((v) => v != null);
+      const avg = (a) => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : null);
+      const t = avg(temps);
+      const h = avg(hums);
+      const alerts = rooms.flatMap((r) => wpRoomAlerts(hass, r, datas.get(r.id) || wpRoomData(hass, r, this._cfg())).map((a) => ({ ...a, room: r })));
+      let date = "";
+      try {
+        date = new Intl.DateTimeFormat(lang, { weekday: "long", day: "numeric", month: "long" }).format(new Date());
+      } catch {}
+      html = `<div class="saver" role="button" tabindex="0" aria-label="${wpEsc(wpT(lang, "tap_wake"))}"><div class="sv-clock">${wpEsc(wpTime(lang, new Date(), hass.locale?.time_format))}</div><div class="sv-date">${wpEsc(date)}</div>${
+        t != null || h != null ? `<div class="sv-env">${t != null ? `<span>${wpNum(lang, t)}°</span>` : ""}${h != null ? `<span>${wpNum(lang, h, 0)} %</span>` : ""}</div>` : ""
+      }${
+        alerts.length
+          ? `<div class="sv-chips">${alerts
+              .slice(0, 4)
+              .map((a) => `<span class="sv-chip t-${a.tone}">${wpEsc(`${a.room.name} · ${wpAlertText(lang, a)}`)}</span>`)
+              .join("")}</div>`
+          : ""
+      }<div class="sv-tap">${wpEsc(wpT(lang, "tap_wake"))}</div></div>`;
+    }
+    this._put("slot-saver", html);
+    root.querySelector(".scr").toggleAttribute("data-saver", on);
+  }
+  _wake() {
+    if (!this._saver) return false;
+    this._saver = false;
+    this._resetIdle();
+    this._render();
+    return true;
   }
 
   // Tile rows: as tall as the screen allows when everything fits (64–96 px), else 64 px and the grid scrolls.
   _fit() {
     const body = this.shadowRoot?.querySelector(".body");
-    const grid = body?.querySelector(".grid.c2, .grid.c3");
-    if (!grid || this._room === "home") return;
-    const cols = grid.classList.contains("c3") ? 3 : 2;
-    const items = [...grid.children];
+    if (!body) return;
+    const lg = this._config.text_size === "large";
+    const set = (el, prop, v) => {
+      if (el.style.getPropertyValue(prop) !== v) el.style.setProperty(prop, v);
+    };
+    if (this._room === "home") {
+      // Every room in view: the fewest columns whose rows (64–72 px, 112 on a large landscape) fit; else scroll.
+      const grid = body.querySelector(".grid.rooms");
+      if (!grid) return;
+      const n = grid.children.length;
+      const base = this._wide ? 4 : this._layout === "landscape" ? 3 : 2;
+      const max = this._wide ? 112 : 72;
+      const min = lg ? 72 : 64;
+      const cs = getComputedStyle(grid);
+      const gap = Number.parseFloat(cs.rowGap) || 8;
+      const avail = body.clientHeight - (grid.offsetTop - body.offsetTop) - (Number.parseFloat(cs.paddingTop) || 0) - (Number.parseFloat(cs.paddingBottom) || 0);
+      let cols = base;
+      let row = min;
+      for (const c of [base, base + 1]) {
+        const rows = Math.ceil(n / c);
+        const fill = Math.floor((avail - (rows - 1) * gap) / rows);
+        cols = c;
+        row = Math.max(min, Math.min(max, fill));
+        if (fill >= min) break;
+        if (c === base + 1) {
+          cols = base;
+          row = min;
+        }
+      }
+      set(grid, "grid-template-columns", `repeat(${cols}, minmax(0, 1fr))`);
+      // Narrow tiles (an extra column to keep every room in view): a smaller icon, more room for the words.
+      grid.classList.toggle("dense", !this._wide && grid.clientWidth / cols < 190);
+      set(grid, "--row", `${row}px`);
+      return;
+    }
+    // Tile rows: as tall as the screen allows when everything fits (64–96 px, 128 on a large landscape), else 64 px
+    // and the grid scrolls.
+    const grid = body.querySelector(".grid.c2, .grid.c3, .grid.c4");
+    if (!grid) return;
+    const cols = grid.classList.contains("c4") ? 4 : grid.classList.contains("c3") ? 3 : 2;
     let units = 0;
     let heroRows = 0;
-    for (const el of items) {
+    for (const el of grid.children) {
       if (el.classList.contains("hero")) heroRows = el.classList.contains("tall") ? 0 : 1;
       else units += el.classList.contains("large") ? 2 : 1;
     }
-    const tileCols = cols === 3 && grid.querySelector(".hero.tall") ? 2 : cols;
+    const tileCols = cols >= 3 && grid.querySelector(".hero.tall") ? cols - 1 : cols;
     const rows = Math.ceil(units / tileCols) + heroRows;
-    const avail = body.clientHeight - 24;
-    const fill = rows ? (avail - (rows - 1) * 8) / rows : 64;
-    const min = this._config.text_size === "large" ? 72 : 64;
-    const row = `${Math.round(Math.max(min, Math.min(96, fill)))}px`;
-    if (grid.style.getPropertyValue("--row") !== row) grid.style.setProperty("--row", row);
+    const gap = cols === 4 ? 12 : 8;
+    const avail = body.clientHeight - (cols === 4 ? 28 : 24);
+    const fill = rows ? (avail - (rows - 1) * gap) / rows : 64;
+    const min = lg ? 72 : 64;
+    set(grid, "--row", `${Math.round(Math.max(min, Math.min(cols === 4 ? 128 : 96, fill)))}px`);
   }
 
   // The status pill on its own line when the title and it do not fit on one.
@@ -488,7 +583,16 @@ class WallPanelCard extends HTMLElement {
   _wire(root) {
     let held = false;
     const target = (e) => e.target.closest?.("[data-id], [data-hero]");
+    let woke = false;
     root.addEventListener("pointerdown", (e) => {
+      // The screensaver's tap only wakes the screen: nothing under it runs (its click, if the browser still sends one
+      // once the screensaver is gone, is dropped; a new press starts afresh).
+      woke = false;
+      if (this._wake()) {
+        woke = true;
+        e.preventDefault();
+        return;
+      }
       this._resetIdle();
       const el = target(e);
       held = false;
@@ -512,6 +616,11 @@ class WallPanelCard extends HTMLElement {
       this._openPopup("detail", el.dataset.id || el.dataset.hero);
     });
     root.addEventListener("keydown", (e) => {
+      if (this._saver && (e.key === "Enter" || e.key === " " || e.key === "Escape")) {
+        e.preventDefault();
+        this._wake();
+        return;
+      }
       const hero = e.target.closest?.(".hero[data-hero]");
       if (hero && (e.key === "Enter" || e.key === " ")) {
         e.preventDefault();
@@ -520,6 +629,11 @@ class WallPanelCard extends HTMLElement {
     });
     root.addEventListener("click", (e) => {
       const el = e.target;
+      if (woke || el.closest?.(".saver")) {
+        woke = false;
+        if (el.closest?.(".saver")) this._wake();
+        return;
+      }
       if (held) {
         held = false;
         if (!el.closest(".sheet")) return;

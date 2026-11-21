@@ -103,6 +103,10 @@ export const render = async (browser, s, hass, icons = iconsFor()) => {
       el._room = s.room || "home";
       el._render(true);
       if (s.popup) el._openPopup(s.popup[0], s.popup[1]);
+      if (s.saver) {
+        el._saver = true;
+        el._render();
+      }
     },
     { hass, s },
   );
