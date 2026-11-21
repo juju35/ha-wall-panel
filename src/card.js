@@ -10,7 +10,75 @@ const WP_SCENE_ANIM = RC_BANNER_STYLES.split("\n")
   .replaceAll(".rc-scene", ".rscene");
 
 const WP_HOLD_MS = 500;
-const WP_DEFAULTS = { start_room: "home", navigation: "auto", device: "auto", idle_return: 120, kiosk: true, hero: "auto", text_size: "normal" };
+const WP_SHIFTS = [
+  [0, 0],
+  [2, 0],
+  [2, 2],
+  [0, 2],
+  [-2, 2],
+  [-2, 0],
+  [-2, -2],
+  [0, -2],
+  [2, -2],
+];
+
+// ── In-place patching ──
+// A part whose HTML changed is patched into the nodes already on screen, not rewritten: a tile pressed while a power
+// reading updates stays the same button (the tap is not lost), icons and the header's scene are kept (its animations do
+// not restart), the grid keeps its scroll. Children are matched by data-id / data-room / data-hero, else by position.
+// (The approach of ha-flight-board-card's DOM morph, copied: the repos stay independent.)
+const wpKeyOf = (n) => (n.nodeType === 1 ? (n.getAttribute("data-id") ?? n.getAttribute("data-room") ?? n.getAttribute("data-hero")) : null);
+const wpPatchAttrs = (cur, next) => {
+  for (const { name } of [...cur.attributes]) {
+    // A <details> the user opened stays open.
+    if (!next.hasAttribute(name) && !(name === "open" && cur.localName === "details")) cur.removeAttribute(name);
+  }
+  for (const { name, value } of next.attributes) if (cur.getAttribute(name) !== value) cur.setAttribute(name, value);
+  // A switch's state is its property once touched: follow the configuration.
+  if (cur.localName === "input" && cur.checked !== next.hasAttribute("checked")) cur.checked = next.hasAttribute("checked");
+};
+const wpPatchChildren = (cur, next) => {
+  const old = [...cur.childNodes];
+  const fresh = [...next.childNodes];
+  const byKey = new Map();
+  for (const o of old) {
+    const k = wpKeyOf(o);
+    if (k !== null && !byKey.has(k)) byKey.set(k, o);
+  }
+  const used = new Set();
+  fresh.forEach((n, i) => {
+    const k = wpKeyOf(n);
+    let o = k !== null ? byKey.get(k) : old[i];
+    if (!o || o.nodeType !== n.nodeType || o.nodeName !== n.nodeName || used.has(o) || (k === null && wpKeyOf(o) !== null)) o = null;
+    const ref = cur.childNodes[i] ?? null;
+    if (!o) {
+      cur.insertBefore(n, ref);
+      return;
+    }
+    used.add(o);
+    if (o !== ref) cur.insertBefore(o, ref);
+    if (n.nodeType === 1) {
+      wpPatchAttrs(o, n);
+      wpPatchChildren(o, n);
+    } else if (o.nodeValue !== n.nodeValue) o.nodeValue = n.nodeValue;
+  });
+  while (cur.childNodes.length > fresh.length) cur.removeChild(cur.lastChild);
+};
+const wpMorph = (el, html) => {
+  const tpl = document.createElement("template");
+  tpl.innerHTML = html;
+  wpPatchChildren(el, tpl.content);
+};
+// Brings an item into view inside its own bar (never scrolls the page or Home Assistant's view, as scrollIntoView can).
+const wpReveal = (el) => {
+  const bar = el?.parentElement;
+  if (!bar?.getBoundingClientRect) return;
+  const r = el.getBoundingClientRect();
+  const b = bar.getBoundingClientRect();
+  if (bar.scrollWidth > bar.clientWidth) bar.scrollLeft += r.left + r.width / 2 - (b.left + b.width / 2);
+  if (bar.scrollHeight > bar.clientHeight) bar.scrollTop += r.top + r.height / 2 - (b.top + b.height / 2);
+};
+const WP_DEFAULTS = { start_room: "home", navigation: "auto", device: "auto", idle_return: 120, kiosk: true, hero: "auto", text_size: "normal", animations: true, pixel_shift: true };
 
 class WallPanelCard extends HTMLElement {
   static getConfigElement() {
@@ -30,14 +98,39 @@ class WallPanelCard extends HTMLElement {
   }
 
   set hass(hass) {
+    const prev = this._hass;
     this._hass = hass;
     if (!this._config) return;
     if (this._room === undefined) this._room = this._startRoom();
+    // Home Assistant sends a new hass on every state change of the install: only the ones this panel shows redraw.
+    if (prev && this._drawn && !this._relevant(prev, hass)) return;
     this._render();
+  }
+
+  // Whether an update touches what the panel shows: the registries, the theme, the language, or a watched entity.
+  _relevant(a, b) {
+    if (a.entities !== b.entities || a.devices !== b.devices || a.areas !== b.areas || a.floors !== b.floors) return true;
+    if (!!a.themes?.darkMode !== !!b.themes?.darkMode || a.locale !== b.locale || a.language !== b.language || a.user !== b.user) return true;
+    if (a.config?.location_name !== b.config?.location_name) return true;
+    if (a.states === b.states) return false;
+    for (const id of this._watchedFor(b)) if (a.states?.[id] !== b.states?.[id]) return true;
+    return false;
+  }
+  _watchedFor(hass) {
+    const w = this._watch;
+    if (w && w.entities === hass.entities && w.devices === hass.devices && w.areas === hass.areas && w.rooms === this._rooms && w.config === this._config) return w.set;
+    const set = wpWatched(hass, this._roomList(), this._cfg());
+    this._watch = { entities: hass.entities, devices: hass.devices, areas: hass.areas, rooms: this._rooms, config: this._config, set };
+    return set;
   }
 
   getCardSize() {
     return 12;
+  }
+
+  // In a sections view: the whole width (the card is made for a panel view, where it fills the screen).
+  getGridOptions() {
+    return { columns: "full" };
   }
 
   connectedCallback() {
@@ -46,9 +139,13 @@ class WallPanelCard extends HTMLElement {
       root.innerHTML = `<style>${WP_STYLES}${WP_SCENE_ANIM}${SCENE_STYLE}</style><div class="scr"><div class="slot-nav"></div><div class="main"><div class="slot-banner"></div><div class="body"></div></div><div class="slot-bnav"></div><div class="veil" hidden></div><div class="slot-sheet"></div></div>`;
       this._wire(root);
     }
-    this._ro = new ResizeObserver(() => this._fit());
+    // A new shape (the X2i turned to portrait, the first layout once the card has a size) redraws; else the rows refit.
+    this._ro = new ResizeObserver(() => {
+      if (this._hass && this._config && wpLayoutFor(this._config.device, this.clientWidth, this.clientHeight) !== this._layout) this._render();
+      else this._fit();
+    });
     this._ro.observe(this);
-    this._clock = setInterval(() => this._render(), 30000);
+    this._tick();
     this._applyKiosk(true);
     this._resetIdle();
     if (this._hass) this._render(true);
@@ -56,11 +153,39 @@ class WallPanelCard extends HTMLElement {
 
   disconnectedCallback() {
     this._ro?.disconnect();
-    clearInterval(this._clock);
+    clearTimeout(this._clock);
     clearTimeout(this._idle);
+    clearTimeout(this._saveT);
+    clearTimeout(this._hold);
+    if (this._escKey) globalThis.removeEventListener?.("keydown", this._escKey);
+    this._escKey = null;
     this._applyKiosk(false);
     // Leaving the page closes any popup, running nothing.
     this._popup = null;
+  }
+
+  // The clock in the header, redrawn on each new minute (not every 30 s, up to 30 s late).
+  _tick() {
+    clearTimeout(this._clock);
+    this._clock = setTimeout(
+      () => {
+        this._render();
+        this._shift();
+        this._tick();
+      },
+      60000 - (Date.now() % 60000) + 50,
+    );
+  }
+  // Burn-in protection for screens that never sleep: every 5 minutes the whole screen moves by a pixel or two,
+  // around a small square (pixel_shift: false keeps it still).
+  _shift() {
+    const scr = this.shadowRoot?.querySelector(".scr");
+    if (!scr) return;
+    const on = this._config?.pixel_shift !== false;
+    const step = on ? Math.floor(Date.now() / 300000) % WP_SHIFTS.length : 0;
+    const [x, y] = WP_SHIFTS[step];
+    const tf = x || y ? `translate(${x}px, ${y}px)` : "";
+    if (scr.style.transform !== tf) scr.style.transform = tf;
   }
 
   // ── State ──
@@ -101,7 +226,7 @@ class WallPanelCard extends HTMLElement {
   _put(slot, html) {
     if (this._parts[slot] === html) return false;
     this._parts[slot] = html;
-    this.shadowRoot.querySelector(`.${slot}`).innerHTML = html;
+    wpMorph(this.shadowRoot.querySelector(`.${slot}`), html);
     return true;
   }
 
@@ -118,22 +243,29 @@ class WallPanelCard extends HTMLElement {
     const scr = root.querySelector(".scr");
     const layout = wpLayoutFor(this._config.device, this.clientWidth, this.clientHeight);
     const nav = wpNavFor(this._config.navigation, layout);
-    scr.className = `scr ${layout}${night ? " dark" : ""}${this._config.text_size === "large" ? " lg" : ""}`;
+    const cls = `scr ${layout}${night ? " dark" : ""}${this._config.text_size === "large" ? " lg" : ""}${this._config.animations === false ? " still" : ""}`;
+    if (scr.className !== cls) scr.className = cls;
     this._layout = layout;
+    this._drawn = true;
+    const setWall = (v) => {
+      if (scr.style.getPropertyValue("--wall") !== v) scr.style.setProperty("--wall", v);
+    };
 
-    const datas = new Map(rooms.map((r) => [r.id, wpRoomData(hass, r, cfg)]));
-    const alertsOf = new Map(rooms.map((r) => [r.id, wpRoomAlerts(hass, r, datas.get(r.id))]));
+    // A room screen reads its own room only; the home screen every room.
+    const shown = this._room === "home" ? rooms : rooms.filter((r) => r.id === this._room);
+    const datas = new Map(shown.map((r) => [r.id, wpRoomData(hass, r, cfg)]));
+    const alertsOf = new Map(shown.map((r) => [r.id, wpRoomAlerts(hass, r, datas.get(r.id))]));
     const navHtml = nav === "hidden" ? "" : wpNavHtml(lang, rooms, this._room, nav);
     const navMoved = this._put("slot-nav", nav === "left" ? navHtml : "") | this._put("slot-bnav", nav === "bottom" ? navHtml : "");
     // The current room stays in view in the bar.
-    if (navMoved) root.querySelector(".ni.on")?.scrollIntoView?.({ block: "nearest", inline: "center" });
+    if (navMoved) wpReveal(root.querySelector(".ni.on"));
     // The home button when the bar is hidden: tapping the banner goes home.
     this._navHidden = nav === "hidden";
 
     let banner;
     let body;
     if (this._room === "home") {
-      scr.style.setProperty("--wall", RC_WALLS.none[night ? 1 : 0]);
+      setWall(RC_WALLS.none[night ? 1 : 0]);
       const all = rooms.flatMap((r) => alertsOf.get(r.id).map((a) => ({ ...a, room: r })));
       const lit = rooms.reduce((n, r) => n + datas.get(r.id).tiles.filter((t) => t.kind === "light" && hass.states[t.id]?.state === "on").length, 0);
       const slots = rooms.slice(0, 4).map((r) => {
@@ -171,14 +303,14 @@ class WallPanelCard extends HTMLElement {
           return `<button class="tile room ${s.tone === "idle" ? "idle" : `t-${s.tone}`}" data-room="${wpEsc(r.id)}" aria-label="${wpEsc(`${r.name}, ${s.text}`)}"><span class="ic">${wpIc(r.icon)}</span><span class="tx"><span class="nm">${wpEsc(r.name)}</span><span class="st">${wpEsc(s.text)}</span></span></button>`;
         })
         .join("");
-      body = `${check ? `<div class="sect">${wpEsc(wpT(lang, "to_check"))}</div><div class="grid c1" style="grid-template-columns:1fr;--row:60px">${check}</div>` : ""}<div class="sect">${wpEsc(
+      body = `${check ? `<div class="sect">${wpEsc(wpT(lang, "to_check"))}</div><div class="grid c1" style="grid-template-columns:1fr;--row:64px">${check}</div>` : ""}<div class="sect">${wpEsc(
         wpT(lang, "rooms"),
       )}</div><div class="grid ${cols === 3 ? "c3e" : "c2"}" style="${cols === 3 ? "grid-template-columns:repeat(3,1fr);" : ""}--row:84px">${roomTiles}</div>`;
     } else {
       const room = rooms.find((r) => r.id === this._room);
       const data = datas.get(room.id);
       const alerts = alertsOf.get(room.id);
-      scr.style.setProperty("--wall", (RC_WALLS[room.type] || RC_WALLS.none)[night ? 1 : 0]);
+      setWall((RC_WALLS[room.type] || RC_WALLS.none)[night ? 1 : 0]);
       const sc = wpSceneFor(hass, lang, room, data, alerts);
       banner = wpBanner({
         type: room.type,
@@ -205,7 +337,7 @@ class WallPanelCard extends HTMLElement {
     const bodyEl = root.querySelector(".body");
     if (this._parts.body !== body) {
       this._parts.body = body;
-      bodyEl.innerHTML = body;
+      wpMorph(bodyEl, body);
       this._fit();
     }
     if (changedBanner) this._fitPill();
@@ -230,7 +362,8 @@ class WallPanelCard extends HTMLElement {
     const avail = body.clientHeight - 24;
     const fill = rows ? (avail - (rows - 1) * 8) / rows : 64;
     const min = this._config.text_size === "large" ? 72 : 64;
-    grid.style.setProperty("--row", `${Math.round(Math.max(min, Math.min(96, fill)))}px`);
+    const row = `${Math.round(Math.max(min, Math.min(96, fill)))}px`;
+    if (grid.style.getPropertyValue("--row") !== row) grid.style.setProperty("--row", row);
   }
 
   // The status pill on its own line when the title and it do not fit on one.
@@ -282,7 +415,7 @@ class WallPanelCard extends HTMLElement {
   _openPopup(kind, id) {
     this._popup = { kind, id };
     this._renderPopup();
-    this.shadowRoot.querySelector(".slot-sheet .pc.on")?.scrollIntoView?.({ block: "nearest", inline: "center" });
+    wpReveal(this.shadowRoot.querySelector(".slot-sheet .pc.on"));
   }
   _closePopup() {
     this._popup = null;
@@ -342,7 +475,6 @@ class WallPanelCard extends HTMLElement {
         const current = await hass.callWS({ type: "lovelace/config", url_path });
         const next = wpPatchLovelace(current, rooms);
         if (!next) return show({ yaml: wpYaml(rooms) });
-        this._saving = true;
         await hass.callWS({ type: "lovelace/config/save", url_path, config: next });
         show({ status: wpT(lang, "saved") });
       } catch (err) {
@@ -354,21 +486,20 @@ class WallPanelCard extends HTMLElement {
 
   // ── Events (delegated) ──
   _wire(root) {
-    let hold = null;
     let held = false;
     const target = (e) => e.target.closest?.("[data-id], [data-hero]");
     root.addEventListener("pointerdown", (e) => {
       this._resetIdle();
       const el = target(e);
       held = false;
-      clearTimeout(hold);
+      clearTimeout(this._hold);
       if (!el || el.closest(".sheet")) return;
-      hold = setTimeout(() => {
+      this._hold = setTimeout(() => {
         held = true;
         this._openPopup("detail", el.dataset.id || el.dataset.hero);
       }, WP_HOLD_MS);
     });
-    const cancel = () => clearTimeout(hold);
+    const cancel = () => clearTimeout(this._hold);
     root.addEventListener("pointerup", cancel);
     root.addEventListener("pointercancel", cancel);
     root.addEventListener("pointerleave", cancel, true);
@@ -376,7 +507,7 @@ class WallPanelCard extends HTMLElement {
       const el = target(e);
       if (!el || el.closest(".sheet")) return;
       e.preventDefault();
-      clearTimeout(hold);
+      clearTimeout(this._hold);
       held = true;
       this._openPopup("detail", el.dataset.id || el.dataset.hero);
     });

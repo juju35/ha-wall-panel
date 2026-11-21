@@ -3,7 +3,7 @@
 // Light text shades and the dark theme's are both chosen for 4.5:1 on the tiles. No filled button anywhere.
 
 const WP_STYLES = `
-:host { display: block; height: var(--wp-h, 100vh); --mdc-icon-size: 24px; }
+:host { display: block; overflow: hidden; height: var(--wp-h, 100vh); --mdc-icon-size: 24px; }
 * { box-sizing: border-box; }
 ha-icon { display: inline-flex; }
 .scr { position: relative; height: 100%; overflow: hidden; display: grid; grid-template: "nav main" 1fr "bnav bnav" auto / auto 1fr;
@@ -22,7 +22,7 @@ ha-icon { display: inline-flex; }
 .body::-webkit-scrollbar { display: none; }
 
 /* Banner */
-.banner { position: relative; height: 90px; flex: none; overflow: hidden; color: #1d2733; --bsub: #46566a; box-shadow: 0 1px 0 rgba(0,0,0,.06); }
+.banner { position: relative; height: 90px; flex: none; overflow: hidden; container-type: inline-size; color: #1d2733; --bsub: #46566a; box-shadow: 0 1px 0 rgba(0,0,0,.06); }
 .banner.night { color: #fff; --bsub: rgba(255,255,255,.8); }
 .rscene { position: absolute; right: 0; bottom: 10px; height: 80px; width: min(200px, 46%); }
 .ground { position: absolute; left: 0; right: 0; bottom: 0; height: 10px; }
@@ -124,7 +124,7 @@ ha-icon { display: inline-flex; }
 .nav.left .ni span { max-width: 60px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* Popups */
-.veil { position: absolute; inset: 0; z-index: 5; background: rgba(15,20,28,.38); backdrop-filter: blur(2px); }
+.veil { position: absolute; inset: 0; z-index: 5; background: rgba(15,20,28,.42); }
 .veil[hidden] { display: none; }
 .sheet { position: absolute; left: 10px; right: 10px; top: 10px; z-index: 6; max-height: calc(100% - 20px); overflow-y: auto; scrollbar-width: none; background: var(--card); color: var(--tx);
   border-radius: 22px; box-shadow: 0 18px 40px rgba(10,16,28,.30), 0 0 0 1px var(--line); padding: 14px; display: flex; flex-direction: column; gap: 10px; }
@@ -159,7 +159,7 @@ ha-icon { display: inline-flex; }
 .field.col .flabel { width: auto; }
 .pcs { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
 .pcs.wrap { flex-wrap: wrap; overflow: visible; }
-.pc { all: unset; box-sizing: border-box; flex: none; display: inline-flex; align-items: center; gap: 4px; min-height: 40px; padding: 0 14px; border-radius: 20px; font-size: 14px; font-weight: 500;
+.pc { all: unset; box-sizing: border-box; flex: none; display: inline-flex; align-items: center; gap: 4px; min-height: 44px; padding: 0 14px; border-radius: 22px; font-size: 14px; font-weight: 500;
   color: var(--tx); box-shadow: inset 0 0 0 1px var(--line); cursor: pointer; --mdc-icon-size: 16px; }
 .pc.on { color: var(--acc); font-weight: 600; background: color-mix(in srgb, var(--acc) 10%, transparent); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--acc) 50%, transparent); }
 .sheet.edit { gap: 8px; padding: 14px 14px 10px; }
@@ -168,11 +168,11 @@ ha-icon { display: inline-flex; }
 .eti { font-size: 18px; font-weight: 600; line-height: 24px; }
 .ehead .sub { display: flex; align-items: center; gap: 5px; margin-top: 1px; --mdc-icon-size: 15px; }
 .ehead .sub ha-icon { color: var(--acc); }
-.ehead .round { width: 40px; height: 40px; margin: -4px -4px 0 0; }
+.ehead .round { margin: -6px -6px 0 0; }
 .preview { padding: 6px; border-radius: 18px; background: repeating-linear-gradient(45deg, color-mix(in srgb, var(--idle) 6%, transparent) 0 8px, transparent 8px 16px); box-shadow: inset 0 0 0 1px var(--line); }
 .preview .tile { width: 100%; pointer-events: none; }
 .seg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; padding: 4px; border-radius: 14px; background: color-mix(in srgb, var(--idle) 9%, transparent); }
-.seg button { all: unset; box-sizing: border-box; min-height: 40px; display: flex; align-items: center; justify-content: center; gap: 6px; border-radius: 11px; font-size: 14px; font-weight: 500; color: var(--sub); cursor: pointer; --mdc-icon-size: 18px; }
+.seg button { all: unset; box-sizing: border-box; min-height: 44px; display: flex; align-items: center; justify-content: center; gap: 6px; border-radius: 11px; font-size: 14px; font-weight: 500; color: var(--sub); cursor: pointer; --mdc-icon-size: 18px; }
 .seg button.on { background: var(--card); color: var(--acc); font-weight: 600; box-shadow: 0 1px 3px rgba(16,24,40,.12), inset 0 0 0 1px color-mix(in srgb, var(--acc) 35%, transparent); }
 .sws { border-radius: 14px; box-shadow: inset 0 0 0 1px var(--line); overflow: hidden; }
 .swr, .swb { display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 12px; cursor: pointer; color: var(--tx); }
@@ -191,6 +191,8 @@ ha-icon { display: inline-flex; }
 .efoot { display: flex; align-items: center; gap: 8px; }
 .efoot .meta { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .efoot .sp { flex: 1; }
-.link { all: unset; display: inline-flex; align-items: center; gap: 4px; min-height: 40px; padding: 0 6px; font-size: 14px; font-weight: 600; color: var(--acc); cursor: pointer; --mdc-icon-size: 18px; }
+.link { all: unset; display: inline-flex; align-items: center; gap: 4px; min-height: 44px; padding: 0 6px; font-size: 14px; font-weight: 600; color: var(--acc); cursor: pointer; --mdc-icon-size: 18px; }
+/* animations: false — the header scenes stand still (always-on panels: no repaint every frame). */
+.still .rscene * { animation: none !important; }
 @media (prefers-reduced-motion: reduce) { .tile, .sw, .sw::after { transition: none; } .tile:active { transform: none; } }
 `;
