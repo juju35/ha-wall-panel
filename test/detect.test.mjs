@@ -121,3 +121,62 @@ test("layout and navigation", () => {
   assert.equal(W.wpNavFor({ landscape: "bottom" }, "square"), "bottom");
   assert.equal(W.wpNavFor("hidden", "portrait"), "hidden");
 });
+
+test("smoke, gas and CO detectors: a tile, an alert and the hero when they trip", () => {
+  const hass = makeHass();
+  hass.entities["binary_sensor.kitchen_smoke"] = { area_id: "living_room" };
+  hass.states["binary_sensor.kitchen_smoke"] = { entity_id: "binary_sensor.kitchen_smoke", state: "on", attributes: { friendly_name: "Smoke", device_class: "smoke" } };
+  const room = roomOf(hass, "living_room");
+  const data = W.wpRoomData(hass, room);
+  assert.equal(data.tiles.find((t) => t.id === "binary_sensor.kitchen_smoke").kind, "safety");
+  assert.equal(W.wpRoomAlerts(hass, room, data)[0].key, "smoke");
+  assert.equal(W.wpPickHero(hass, room, data).key, "smoke");
+});
+
+test("one appliance tile per device: the operation state, not the programme selectors or the progress", () => {
+  const hass = makeHass();
+  const add = (id, state, attributes = {}) => {
+    hass.entities[id] = { device_id: "dishwasher" };
+    hass.states[id] = { entity_id: id, state, attributes };
+  };
+  hass.devices.dishwasher = { area_id: "living_room" };
+  add("select.dishwasher_selected_program", "eco_50");
+  add("select.dishwasher_active_program", "eco_50");
+  add("sensor.dishwasher_operation_state", "run", { device_class: "enum" });
+  add("sensor.dishwasher_program_progress", "40", { unit_of_measurement: "%" });
+  add("sensor.dishwasher_program_finish_time", "2026-01-01T12:00:00Z", { device_class: "timestamp" });
+  const apps = W.wpRoomData(hass, roomOf(hass, "living_room")).tiles.filter((t) => t.kind === "appliance");
+  assert.deepEqual(plain(apps.map((t) => t.id)), ["sensor.dishwasher_operation_state"]);
+});
+
+test("updates: the watched set holds the rooms' entities, a plug's power sensor through its device, and the overrides", () => {
+  const hass = makeHass();
+  const config = { rooms: { living_room: { include: ["sensor.elsewhere"], group: { "light.lamp": ["light.far"] } } } };
+  const w = W.wpWatched(hass, W.wpRooms(hass, config), config);
+  for (const id of ["light.lamp", "sensor.tv_plug_power", "sensor.bathroom_humidity", "sensor.elsewhere", "light.far"]) assert.ok(w.has(id), id);
+  assert.ok(!w.has("sensor.not_there"));
+  // Built once per registry.
+  assert.equal(W.wpAreaEntities(hass), W.wpAreaEntities(hass));
+});
+
+test("areas with nothing to show are left out unless asked for", () => {
+  const hass = makeHass();
+  hass.areas.garden = { area_id: "garden", name: "Garden" };
+  hass.areas.attic = { area_id: "attic", name: "Attic" };
+  hass.entities["sensor.attic_battery"] = { area_id: "attic" };
+  hass.states["sensor.attic_battery"] = { entity_id: "sensor.attic_battery", state: "80", attributes: { device_class: "battery" } };
+  const ids = (config) => W.wpRooms(hass, config).map((r) => r.id);
+  assert.ok(!ids({}).includes("garden") && !ids({}).includes("attic"));
+  assert.ok(ids({}).includes("living_room"));
+  assert.ok(ids({ show_empty_areas: true }).includes("garden"));
+  assert.ok(ids({ areas: ["garden", "living_room"] }).includes("garden"));
+  assert.ok(ids({ rooms: { garden: { include: ["light.lamp"] } } }).includes("garden"));
+});
+
+test("screensaver: night follows the dark theme, always always, false never", () => {
+  assert.equal(W.wpSaverOn("night", true), true);
+  assert.equal(W.wpSaverOn(undefined, true), true);
+  assert.equal(W.wpSaverOn("night", false), false);
+  assert.equal(W.wpSaverOn("always", false), true);
+  assert.equal(W.wpSaverOn(false, true), false);
+});

@@ -1,6 +1,6 @@
 {
   "name": "ha-wall-panel",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "description": "A whole Home Assistant dashboard for small wall panels (Sonoff NSPanel Pro, Shelly Wall Display X1i / X2i): every room, its devices detected automatically, illustrated and easy to read.",
   "repository": {
     "type": "git",
@@ -15,7 +15,7 @@
     "build": "node scripts/build.mjs",
     "check": "node scripts/build.mjs && node --check dist/ha-wall-panel.js",
     "test": "node --test test/*.test.mjs",
-    "screenshots": "npm run build && node scripts/screenshots/rooms.mjs && node scripts/screenshots/animations.mjs"
+    "screenshots": "npm run build && node scripts/screenshots/rooms.mjs && node scripts/screenshots/animations.mjs && node scripts/screenshots/stability.mjs"
   },
   "license": "MIT",
   "devDependencies": {

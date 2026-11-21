@@ -77,7 +77,8 @@ real family names. **One GIF per distinct animation/state/variant** (not one per
 
 ## UX & rendering
 - Check rendering under **WebKit/Safari** (a `subgrid`-at-`:hover` bug has bitten before) and at the panels' sizes:
-  480 × 480, 720 × 360, 375 × 667 (`npm run screenshots`).
+  480 × 480, 720 × 360, 1440 × 720, 360 × 720, 375 × 667 (`npm run screenshots`, which also runs `scripts/screenshots/stability.mjs`:
+  no DOM change on unrelated updates, in-place patches, taps kept across an update).
 - Visual rework: **propose design options to choose from** before implementing.
 - `rooms` and other lists/objects are **YAML-only** (README says so); popups open at the **top**, never centred.
 

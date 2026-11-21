@@ -27,6 +27,7 @@ const WP_KIND_ORDER = [
   "contact",
   "motion",
   "leak",
+  "safety",
   "scene",
   "other",
 ];
@@ -35,6 +36,8 @@ const WP_PRIMARY = new Set(["light", "fan", "climate", "humidifier", "media_play
 const WP_PLUG_RE = /\b(prise|plug|socket|outlet|steckdose|enchufe|presa|stopcontact|gniazd)/i;
 const WP_CONTACT_DC = new Set(["door", "window", "garage_door", "opening"]);
 const WP_MOTION_DC = new Set(["motion", "occupancy", "presence"]);
+// Smoke, gas and carbon monoxide detectors: a tile, and an alert when they trip.
+const WP_SAFETY_DC = { smoke: "smoke", gas: "gas", carbon_monoxide: "co_alarm" };
 const WP_ENV_DC = { temperature: "temperature", humidity: "humidity", carbon_dioxide: "co2", pm25: "pm25" };
 const WP_APPLIANCE_STATE = /\b(program|programme|operation|op state)\b/;
 
@@ -93,10 +96,14 @@ const wpKind = (hass, id) => {
       if (WP_CONTACT_DC.has(dc)) return "contact";
       if (WP_MOTION_DC.has(dc)) return "motion";
       if (dc === "moisture") return "leak";
+      if (WP_SAFETY_DC[dc]) return "safety";
       return null;
     case "sensor":
     case "select":
-      return WP_APPLIANCE_STATE.test(wpNorm(id)) ? "appliance" : null;
+      // An appliance's state or programme (text), not its progress, remaining time or start time.
+      if (!WP_APPLIANCE_STATE.test(wpNorm(id))) return null;
+      if (st.attributes?.unit_of_measurement || ["timestamp", "duration"].includes(dc)) return null;
+      return d === "sensor" && st.state !== "" && Number.isFinite(Number(st.state)) ? null : "appliance";
     default:
       return null;
   }
@@ -155,7 +162,59 @@ const wpPowerOf = (hass, id, devEnts) => {
   return null;
 };
 
-// The ordered list of rooms: `areas` (order and choice) when set, else every area by floor level then name.
+// area_id → its entity ids (the entity's area, else its device's), built once per registry: the room screens and the
+// update filter read only their own entities instead of scanning every state of the install on each update.
+let wpAreaCache = { entities: null, devices: null, map: null };
+const wpAreaEntities = (hass) => {
+  const c = wpAreaCache;
+  if (c.map && c.entities === hass.entities && c.devices === hass.devices) return c.map;
+  const map = {};
+  for (const id of Object.keys(hass.entities || {})) {
+    const a = wpAreaOf(hass, id);
+    if (a) (map[a] ||= []).push(id);
+  }
+  wpAreaCache = { entities: hass.entities, devices: hass.devices, map };
+  return map;
+};
+
+// Every entity a screen can show or read, for the listed rooms: their entities (power sensors of plugs included,
+// through their device), what `include`, `group` and `hero` add. An update that changes none of them is skipped.
+const wpWatched = (hass, rooms, config = {}) => {
+  const byArea = wpAreaEntities(hass);
+  const out = new Set();
+  for (const r of rooms) {
+    for (const id of byArea[r.id] || []) out.add(id);
+    const o = config.rooms?.[r.id] || {};
+    for (const id of o.include || []) out.add(id);
+    for (const m of Object.values(o.group || {})) for (const id of m || []) out.add(id);
+    if (typeof o.hero === "string") out.add(o.hero);
+  }
+  if (typeof config.hero === "string") out.add(config.hero);
+  return out;
+};
+
+// Areas holding something to show (a tile or an ambient reading), built once per registry.
+let wpFilledCache = { entities: null, devices: null, set: null };
+const wpFilledAreas = (hass) => {
+  const c = wpFilledCache;
+  if (c.set && c.entities === hass.entities && c.devices === hass.devices) return c.set;
+  const devEnts = wpDeviceEntities(hass);
+  const set = new Set();
+  for (const [area, ids] of Object.entries(wpAreaEntities(hass))) {
+    const some = ids.some((id) => {
+      const st = hass.states?.[id];
+      if (!st) return false;
+      if (id.startsWith("sensor.") && WP_ENV_DC[st.attributes?.device_class] && !hass.entities?.[id]?.entity_category) return true;
+      return !!wpKind(hass, id) && !wpSkip(hass, id, devEnts);
+    });
+    if (some) set.add(area);
+  }
+  wpFilledCache = { entities: hass.entities, devices: hass.devices, set };
+  return set;
+};
+
+// The ordered list of rooms: `areas` (order and choice) when set, else every area holding something to show (every
+// area with `show_empty_areas: true`) by floor level then name. A room given entities by `include` always shows.
 const wpRooms = (hass, config = {}) => {
   const areas = hass.areas || {};
   const exclude = new Set(config.exclude_areas || []);
@@ -164,6 +223,10 @@ const wpRooms = (hass, config = {}) => {
   else {
     const level = (a) => hass.floors?.[areas[a].floor_id]?.level ?? 0;
     ids = Object.keys(areas).sort((a, b) => level(a) - level(b) || (areas[a].name || a).localeCompare(areas[b].name || b));
+    if (!config.show_empty_areas) {
+      const filled = wpFilledAreas(hass);
+      ids = ids.filter((a) => filled.has(a) || config.rooms?.[a]?.include?.length);
+    }
   }
   return ids
     .filter((a) => !exclude.has(a))
@@ -201,9 +264,9 @@ const wpRoomData = (hass, room, config = {}) => {
   const grouped = new Set(Object.values(o.group || {}).flat());
   const env = { temperature: [], humidity: [], co2: [], pm25: [] };
   const found = [];
-  for (const id of Object.keys(hass.states || {})) {
-    if (wpAreaOf(hass, id) !== room.id) continue;
-    const st = hass.states[id];
+  for (const id of wpAreaEntities(hass)[room.id] || []) {
+    const st = hass.states?.[id];
+    if (!st) continue;
     const dc = st.attributes?.device_class;
     if (id.startsWith("sensor.") && WP_ENV_DC[dc] && !hass.entities?.[id]?.entity_category) {
       if (wpAvailable(st) && !wpIsApplianceSensor(hass, id, devEnts)) {
@@ -215,6 +278,19 @@ const wpRoomData = (hass, room, config = {}) => {
     const kind = wpKind(hass, id);
     if (!kind || wpSkip(hass, id, devEnts)) continue;
     found.push(id);
+  }
+  // One appliance tile per device: its operation state rather than its programme selectors.
+  const applianceOf = new Map();
+  const appRank = (id) => (id.startsWith("sensor.") ? (/\b(operation|op) state\b/.test(wpNorm(id)) ? 0 : 1) : 2);
+  for (const id of found) {
+    const dev = hass.entities?.[id]?.device_id;
+    if (!dev || wpKind(hass, id) !== "appliance") continue;
+    const best = applianceOf.get(dev);
+    if (!best || appRank(id) < appRank(best)) applianceOf.set(dev, id);
+  }
+  for (let i = found.length - 1; i >= 0; i--) {
+    const dev = hass.entities?.[found[i]]?.device_id;
+    if (dev && applianceOf.has(dev) && applianceOf.get(dev) !== found[i] && wpKind(hass, found[i]) === "appliance") found.splice(i, 1);
   }
   const included = (o.include || []).filter((id) => hass.states?.[id] && !found.includes(id));
   const all = [...found, ...included];
@@ -261,6 +337,7 @@ const wpRoomAlerts = (hass, room, data) => {
   for (const t of data.tiles) {
     const st = hass.states[t.id];
     if (t.kind === "leak" && on(t.id)) out.push({ tone: "alert", key: "leak", id: t.id, name: t.name });
+    if (t.kind === "safety" && on(t.id)) out.push({ tone: "alert", key: WP_SAFETY_DC[st.attributes?.device_class] || "smoke", id: t.id, name: t.name });
     if (t.kind === "contact" && on(t.id)) {
       const dc = st.attributes?.device_class;
       out.push({ tone: "open", key: dc === "window" ? "window_open" : "door_open", id: t.id, name: t.name });
@@ -283,6 +360,8 @@ const wpPickHero = (hass, room, data, config = {}) => {
   const st = (id) => hass.states?.[id];
   if (typeof setting === "string" && setting.includes(".")) return st(setting) ? { type: "entity", id: setting } : null;
   const first = (kind, test = () => true) => data.tiles.find((t) => t.kind === kind && test(st(t.id)));
+  const alarm = first("safety", (s) => s.state === "on");
+  if (alarm) return { type: "leak", id: alarm.id, key: WP_SAFETY_DC[st(alarm.id).attributes?.device_class] || "smoke" };
   const leak = first("leak", (s) => s.state === "on");
   if (leak) return { type: "leak", id: leak.id };
   if (data.env.co2 != null && data.env.co2 >= 1000) return { type: "co2" };

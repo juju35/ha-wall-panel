@@ -62,6 +62,8 @@ const wpIcon = (hass, t, st) => {
       return st?.state === "on" ? "mdi:motion-sensor" : "mdi:motion-sensor-off";
     case "leak":
       return st?.state === "on" ? "mdi:water-alert" : "mdi:water-check";
+    case "safety":
+      return st?.state === "on" ? "mdi:smoke-detector-variant-alert" : "mdi:smoke-detector-variant";
     case "scene":
       return "mdi:palette";
     case "appliance":
@@ -154,6 +156,7 @@ const wpTileView = (hass, lang, t) => {
       view.tone = s === "on" ? "ok" : "idle";
       break;
     case "leak":
+    case "safety":
       view.tone = s === "on" ? "alert" : "ok";
       break;
     case "appliance":

@@ -12,8 +12,10 @@ const wpSceneFor = (hass, lang, room, data, alerts) => {
   const lights = tiles.filter((t) => t.kind === "light").slice(0, 3);
   const lamps = lights.map((t) => {
     const s = st(t.id);
+    // Numbers only: the colour goes into the scene's SVG attributes.
     const rgb = s?.attributes?.rgb_color;
-    return { on: s?.state === "on", color: rgb ? `rgb(${rgb.join(",")})` : undefined };
+    const ok = Array.isArray(rgb) && rgb.length === 3 && rgb.every((v) => Number.isFinite(Number(v)));
+    return { on: s?.state === "on", color: ok ? `rgb(${rgb.map((v) => Math.round(Number(v))).join(",")})` : undefined };
   });
   const contacts = tiles.filter((t) => t.kind === "contact");
   const openOf = (dc) => contacts.some((t) => st(t.id)?.state === "on" && (dc ? st(t.id)?.attributes?.device_class === dc : st(t.id)?.attributes?.device_class !== "window"));
@@ -137,7 +139,7 @@ const wpHeroView = (hass, lang, room, data, hero) => {
         chips: wpEnvChips(lang, env, ["humidity"]),
       };
     case "leak":
-      return { tone: "alert", icon: "mdi:water-alert", value: wpT(lang, "leak"), words: true, label: wpCleanName(wpName(hass, hero.id), room.name), id: hero.id, chips: [] };
+      return { tone: "alert", icon: hero.key ? "mdi:smoke-detector-variant-alert" : "mdi:water-alert", value: wpT(lang, hero.key || "leak"), words: true, label: wpCleanName(wpName(hass, hero.id), room.name), id: hero.id, chips: [] };
     default:
       break;
   }
