@@ -1,12 +1,16 @@
 # Changelog
 
-## 1.1.0 - 2026-11-21
+## 1.2.0 - 2026-11-21
 
 ### Features
+- Home screen: what needs a look as one row of 48 px chips (a tap opens the room) and every room on one line (icon, name, state), sized to fit the screen without scrolling.
+- Large landscape (1,000 px wide and more, Shelly X2i at 1× density): four columns, 128 px rows, bigger icons and text, a wider room rail.
+- Night screensaver (`screensaver: night`, the default; `always`, `false`): after the idle delay with the dark theme, a dim clock, the temperature and what needs a look on near-black; a tap wakes the panel and runs nothing.
+- Areas with nothing to show are left out by default; `show_empty_areas: true` lists them (areas in `areas` and rooms with `include` always show).
 - Smoke, gas and carbon monoxide detectors (`binary_sensor` of class `smoke`, `gas`, `carbon_monoxide`) are detected: a `safety` tile, an alert on the home screen and the room's hero when they trip.
 - `pixel_shift` (on by default): burn-in protection, the whole screen moves by 2 px every 5 minutes.
 - `animations: false`: the header scenes stand still.
-- Visual editor: `animations`, `pixel_shift`, `language` and `height` fields.
+- Visual editor: `screensaver`, `show_empty_areas`, `animations`, `pixel_shift`, `language` and `height` fields.
 
 ### Fixes
 - A tap is no longer lost when an update lands between the press and the release: the screen is patched in place (tiles, icons and the header scene are kept) instead of rewritten.
@@ -22,7 +26,7 @@
 - No backdrop blur behind the popups (costly on the panels' GPUs).
 
 ### Maintenance
-- `scripts/screenshots/stability.mjs`, run with the screenshots: no DOM change on unrelated updates, in-place patches, steady height, taps kept across an update. New capture at the Shelly X2i portrait size (360 × 720).
+- `scripts/screenshots/stability.mjs`, run with the screenshots: no DOM change on unrelated updates, in-place patches, steady height, taps kept across an update. New captures at the Shelly X2i portrait size (360 × 720), the large landscape (1440 × 720) and of the screensaver; checks for the home screen fit, the large-landscape grid and the screensaver idle / wake.
 
 ## 1.0.0 - 2026-11-21
 
