@@ -193,7 +193,28 @@ const wpWatched = (hass, rooms, config = {}) => {
   return out;
 };
 
-// The ordered list of rooms: `areas` (order and choice) when set, else every area by floor level then name.
+// Areas holding something to show (a tile or an ambient reading), built once per registry.
+let wpFilledCache = { entities: null, devices: null, set: null };
+const wpFilledAreas = (hass) => {
+  const c = wpFilledCache;
+  if (c.set && c.entities === hass.entities && c.devices === hass.devices) return c.set;
+  const devEnts = wpDeviceEntities(hass);
+  const set = new Set();
+  for (const [area, ids] of Object.entries(wpAreaEntities(hass))) {
+    const some = ids.some((id) => {
+      const st = hass.states?.[id];
+      if (!st) return false;
+      if (id.startsWith("sensor.") && WP_ENV_DC[st.attributes?.device_class] && !hass.entities?.[id]?.entity_category) return true;
+      return !!wpKind(hass, id) && !wpSkip(hass, id, devEnts);
+    });
+    if (some) set.add(area);
+  }
+  wpFilledCache = { entities: hass.entities, devices: hass.devices, set };
+  return set;
+};
+
+// The ordered list of rooms: `areas` (order and choice) when set, else every area holding something to show (every
+// area with `show_empty_areas: true`) by floor level then name. A room given entities by `include` always shows.
 const wpRooms = (hass, config = {}) => {
   const areas = hass.areas || {};
   const exclude = new Set(config.exclude_areas || []);
@@ -202,6 +223,10 @@ const wpRooms = (hass, config = {}) => {
   else {
     const level = (a) => hass.floors?.[areas[a].floor_id]?.level ?? 0;
     ids = Object.keys(areas).sort((a, b) => level(a) - level(b) || (areas[a].name || a).localeCompare(areas[b].name || b));
+    if (!config.show_empty_areas) {
+      const filled = wpFilledAreas(hass);
+      ids = ids.filter((a) => filled.has(a) || config.rooms?.[a]?.include?.length);
+    }
   }
   return ids
     .filter((a) => !exclude.has(a))
