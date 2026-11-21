@@ -1,0 +1,54 @@
+name: HACS Validation
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "0 0 * * *"
+  workflow_dispatch:
+  # Called by Release, so that a version is published only once these checks pass.
+  workflow_call:
+
+permissions:
+  contents: read
+
+# github.workflow is "Release" when called from Release: the group then stays distinct from this
+# workflow's own push run on main, so neither cancels the other. The event too: the checks the screenshot commit
+# dispatches on a pull request's branch have their own group, so a dispatched run stuck on GitHub's side (queued
+# with no job, impossible to cancel) cannot hold the pull request's own runs, nor theirs.
+concurrency:
+  group: hacs-${{ github.workflow }}-${{ github.event_name }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  hacs:
+    name: HACS
+    # On a fork PR, hacs/action validates the fork: the fork has no release with the built card and fails;
+    # the push run on main still validates the merged result.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # A brand-new repository has no release yet, so no built card for HACS to find: the first release must not
+      # wait on a check that only it can satisfy. Every later run validates as usual.
+      - name: Released before?
+        id: released
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh api "repos/${{ github.repository }}/releases/latest" --silent 2>/dev/null; then
+            echo "yes=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::No release yet: HACS validation skipped until the first release is published."
+            echo "yes=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: HACS validation
+        if: steps.released.outputs.yes == 'true'
+        uses: hacs/action@1ebf01c408f29afcb6406bd431bc98fd8cbb15aa # main
+        with:
+          category: plugin
