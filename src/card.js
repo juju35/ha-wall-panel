@@ -13,6 +13,10 @@ const WP_HOLD_MS = 500;
 const WP_DEFAULTS = { start_room: "home", navigation: "auto", device: "auto", idle_return: 120, kiosk: true, hero: "auto", text_size: "normal" };
 
 class WallPanelCard extends HTMLElement {
+  static getConfigElement() {
+    return document.createElement(`${WP_TAG}-editor`);
+  }
+
   static getStubConfig() {
     return { type: `custom:${WP_TAG}` };
   }
