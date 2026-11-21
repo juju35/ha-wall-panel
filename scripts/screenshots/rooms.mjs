@@ -102,6 +102,7 @@ const shots = [
   ...pair("landscape-living", { w: 720, h: 360, room: "living_room" }),
   ...pair("landscape-home", { w: 720, h: 360 }),
   ...pair("portrait-living", { w: 375, h: 667, room: "living_room" }),
+  ...pair("portrait-x2i-living", { w: 360, h: 720, room: "living_room" }),
   ...pair("detail-cover", { ...SQ, room: "living_room", popup: ["detail", "cover.living_room_shutters"] }),
   ...pair("detail-climate", { ...SQ, room: "bedroom", popup: ["detail", "climate.bedroom"] }),
   ...pair("customize", { ...SQ, room: "living_room", popup: ["edit", "switch.living_room_tv_plug"] }),
