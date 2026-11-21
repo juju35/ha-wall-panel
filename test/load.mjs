@@ -8,7 +8,7 @@ const read = (name) => readFileSync(new URL(`../src/${name}.js`, import.meta.url
 const NAMES = [
   "WP_I18N", "wpLang", "wpT", "wpNum", "wpLayoutFor", "wpNavFor", "wpRooms", "wpRoomData", "wpKind", "wpCleanName", "wpRoomAlerts",
   "wpPickHero", "wpHeroView", "wpTileView", "wpTapAction", "wpApplyEdit", "wpPatchLovelace", "wpYaml", "wpDashboardPath", "wpSceneFor",
-  "wpBanner", "wpTileHtml", "wpHeroHtml", "wpDetailHtml", "wpEditHtml", "wpNavHtml", "customElements",
+  "wpBanner", "wpTileHtml", "wpWatched", "wpAreaEntities", "wpHeroHtml", "wpDetailHtml", "wpEditHtml", "wpNavHtml", "customElements",
 ];
 
 export const load = () => {
