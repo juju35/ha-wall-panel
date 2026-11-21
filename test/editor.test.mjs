@@ -30,3 +30,13 @@ test("a per-layout navigation is not flattened by the form", () => {
   assert.deepEqual(changed({ navigation: nav }, { navigation: "auto" }).navigation, nav);
   assert.equal(changed({ navigation: nav }, { navigation: "left" }).navigation, "left");
 });
+
+test("animations and pixel_shift: in the form, written only when turned off", () => {
+  assert.deepEqual(changed({}, { animations: false, pixel_shift: true }), { animations: false });
+  assert.deepEqual(changed({ animations: false }, { animations: true }), {});
+});
+
+test("language and height: in the form; auto and empty leave them out", () => {
+  assert.deepEqual(changed({ language: "fr" }, { language: "auto", height: "" }), {});
+  assert.deepEqual(changed({}, { language: "de", height: "600px" }), { language: "de", height: "600px" });
+});

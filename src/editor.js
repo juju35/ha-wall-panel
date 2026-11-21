@@ -28,7 +28,11 @@ class WallPanelCardEditor extends HTMLElement {
       { name: "text_size", selector: opts([["normal", t("size_normal")], ["large", t("size_large")]]) },
       { name: "illustration_theme", selector: opts([["auto", t("follow_theme")], ["day", t("day")], ["night", t("night")]]) },
       { name: "idle_return", selector: { number: { min: 0, max: 3600, step: 10, mode: "box", unit_of_measurement: "s" } } },
+      { name: "language", selector: opts([["auto", t("auto")], ...Object.keys(WP_I18N).map((l) => [l, l])]) },
+      { name: "height", selector: { text: {} } },
       { name: "kiosk", selector: { boolean: {} } },
+      { name: "animations", selector: { boolean: {} } },
+      { name: "pixel_shift", selector: { boolean: {} } },
     ];
   }
   _draw() {
@@ -49,6 +53,7 @@ class WallPanelCardEditor extends HTMLElement {
       navigation: typeof nav === "string" ? nav : "auto",
       hero: this._config.hero === false || this._config.hero === "none" ? "none" : "auto",
       illustration_theme: this._config.illustration_theme || "auto",
+      language: this._config.language || "auto",
     };
   }
   _changed(value) {
@@ -57,7 +62,7 @@ class WallPanelCardEditor extends HTMLElement {
       if (!this._schema().some((s) => s.name === k)) continue;
       if (k === "navigation" && typeof this._config.navigation === "object" && v === "auto") continue;
       if (k === "hero") next.hero = v === "none" ? false : "auto";
-      else if (k === "illustration_theme" && v === "auto") delete next.illustration_theme;
+      else if ((k === "illustration_theme" || k === "language") && v === "auto") delete next[k];
       else if (v === "" || v == null) delete next[k];
       else next[k] = v;
     }
