@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readdirSync, readFileSync } from "node:fs";
 import { test } from "node:test";
 import { load } from "./load.mjs";
+import { sources } from "./source.mjs";
 
 const W = load();
 const LANGS = ["en", "fr", "de", "es", "it", "nl", "pt", "pl", "sr", "sr-Latn", "ro", "da", "sv", "bg", "ru", "uk", "hu", "sk", "cs", "sl", "lv", "el"];
@@ -23,7 +24,7 @@ test("every language, every key, the same placeholders", () => {
 test("every key the code uses exists", () => {
   const src = readdirSync(new URL("../src/", import.meta.url))
     .filter((f) => f.endsWith(".js"))
-    .map((f) => readFileSync(new URL(`../src/${f}`, import.meta.url), "utf8"))
+    .map((f) => (sources[f] ?? readFileSync(new URL(`../src/${f}`, import.meta.url), "utf8")))
     .join("\n");
   const used = new Set([...src.matchAll(/wpT\(lang, "([a-z0-9_]+)"/g)].map((m) => m[1]));
   for (const k of ["size_normal", "size_large", "size_hero", "save_failed", "yaml_hint", "leak", "door_open", "window_open", "unlocked", "co2_high", "humid"]) used.add(k);

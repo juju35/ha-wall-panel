@@ -3,8 +3,9 @@
 import { readFileSync } from "node:fs";
 import vm from "node:vm";
 import { PARTS } from "../scripts/build.mjs";
+import { sources } from "./source.mjs";
 
-const read = (name) => readFileSync(new URL(`../src/${name}.js`, import.meta.url), "utf8");
+const read = (name) => (sources[`${name}.js`] ?? readFileSync(new URL(`../src/${name}.js`, import.meta.url), "utf8"));
 const NAMES = [
   "WP_I18N", "wpLang", "wpT", "wpNum", "wpLayoutFor", "wpNavFor", "wpRooms", "wpRoomData", "wpKind", "wpCleanName", "wpRoomAlerts",
   "wpPickHero", "wpHeroView", "wpTileView", "wpTapAction", "wpApplyEdit", "wpPatchLovelace", "wpYaml", "wpDashboardPath", "wpSceneFor",

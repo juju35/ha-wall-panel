@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.1 - 2026-11-24
+
+### Maintenance
+- The card source is split into ES modules: `src/i18n/` (entry `src/i18n/index.js`), cut at its sections, with the translations in one file per language (`i18n/<lang>.js`). `scripts/bundle.mjs` concatenates them back, in their original order, into the same single file and per-language files as before; the tests evaluate that bundle.
+
 ## 1.2.0 - 2026-11-21
 
 ### Features
