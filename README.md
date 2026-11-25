@@ -183,19 +183,25 @@ An administrator's changes are saved to the dashboard at once (the strategy's op
 
 ### Square — NSPanel Pro 86, Shelly X1i
 
-| Home | Living room | Kitchen | Bedroom (night) |
-|---|---|---|---|
-| <img src="https://raw.githubusercontent.com/juju35/ha-wall-panel/main/screenshots/square-home.png" alt="Home" width="200"> | <img src="https://raw.githubusercontent.com/juju35/ha-wall-panel/main/screenshots/square-living.png" alt="Living room" width="200"> | <img src="https://raw.githubusercontent.com/juju35/ha-wall-panel/main/screenshots/square-kitchen.png" alt="Kitchen" width="200"> | <img src="https://raw.githubusercontent.com/juju35/ha-wall-panel/main/screenshots/square-bedroom-dark.png" alt="Bedroom at night" width="200"> |
-| **Kids room** | **Bathroom** | **Entrance** | **Office** |
-| <img src="https://raw.githubusercontent.com/juju35/ha-wall-panel/main/screenshots/square-kids.png" alt="Kids room" width="200"> | <img src="https://raw.githubusercontent.com/juju35/ha-wall-panel/main/screenshots/square-bathroom.png" alt="Bathroom" width="200"> | <img src="https://raw.githubusercontent.com/juju35/ha-wall-panel/main/screenshots/square-entrance.png" alt="Entrance" width="200"> | <img src="https://raw.githubusercontent.com/juju35/ha-wall-panel/main/screenshots/square-office.png" alt="Office" width="200"> |
+| Screen | Light | Dark |
+|---|---|---|
+| Home | <img src="https://raw.githubusercontent.com/juju35/ha-wall-panel/main/screenshots/square-home.png" alt="Home" width="200"> | <img src="https://raw.githubusercontent.com/juju35/ha-wall-panel/main/screenshots/square-home-dark.png" alt="Home, dark" width="200"> |
+| Living room | <img src="https://raw.githubusercontent.com/juju35/ha-wall-panel/main/screenshots/square-living.png" alt="Living room" width="200"> | <img src="https://raw.githubusercontent.com/juju35/ha-wall-panel/main/screenshots/square-living-dark.png" alt="Living room, dark" width="200"> |
+| Kitchen | <img src="https://raw.githubusercontent.com/juju35/ha-wall-panel/main/screenshots/square-kitchen.png" alt="Kitchen" width="200"> | <img src="https://raw.githubusercontent.com/juju35/ha-wall-panel/main/screenshots/square-kitchen-dark.png" alt="Kitchen, dark" width="200"> |
+| Bedroom | <img src="https://raw.githubusercontent.com/juju35/ha-wall-panel/main/screenshots/square-bedroom.png" alt="Bedroom" width="200"> | <img src="https://raw.githubusercontent.com/juju35/ha-wall-panel/main/screenshots/square-bedroom-dark.png" alt="Bedroom, dark" width="200"> |
+| Kids room | <img src="https://raw.githubusercontent.com/juju35/ha-wall-panel/main/screenshots/square-kids.png" alt="Kids room" width="200"> | <img src="https://raw.githubusercontent.com/juju35/ha-wall-panel/main/screenshots/square-kids-dark.png" alt="Kids room, dark" width="200"> |
+| Bathroom | <img src="https://raw.githubusercontent.com/juju35/ha-wall-panel/main/screenshots/square-bathroom.png" alt="Bathroom" width="200"> | <img src="https://raw.githubusercontent.com/juju35/ha-wall-panel/main/screenshots/square-bathroom-dark.png" alt="Bathroom, dark" width="200"> |
+| Entrance | <img src="https://raw.githubusercontent.com/juju35/ha-wall-panel/main/screenshots/square-entrance.png" alt="Entrance" width="200"> | <img src="https://raw.githubusercontent.com/juju35/ha-wall-panel/main/screenshots/square-entrance-dark.png" alt="Entrance, dark" width="200"> |
+| Office | <img src="https://raw.githubusercontent.com/juju35/ha-wall-panel/main/screenshots/square-office.png" alt="Office" width="200"> | <img src="https://raw.githubusercontent.com/juju35/ha-wall-panel/main/screenshots/square-office-dark.png" alt="Office, dark" width="200"> |
 
 ### Landscape — Shelly X2i
 
-| Living room | Home |
-|---|---|
-| <img src="https://raw.githubusercontent.com/juju35/ha-wall-panel/main/screenshots/landscape-living.png" alt="Living room, landscape" width="360"> | <img src="https://raw.githubusercontent.com/juju35/ha-wall-panel/main/screenshots/landscape-home.png" alt="Home, landscape" width="360"> |
-| **Living room, large landscape (1440 × 720)** | **Home, large landscape (dark)** |
-| <img src="https://raw.githubusercontent.com/juju35/ha-wall-panel/main/screenshots/wide-living.png" alt="Living room, large landscape" width="360"> | <img src="https://raw.githubusercontent.com/juju35/ha-wall-panel/main/screenshots/wide-home-dark.png" alt="Home, large landscape, dark" width="360"> |
+| Screen | Light | Dark |
+|---|---|---|
+| Living room | <img src="https://raw.githubusercontent.com/juju35/ha-wall-panel/main/screenshots/landscape-living.png" alt="Living room" width="320"> | <img src="https://raw.githubusercontent.com/juju35/ha-wall-panel/main/screenshots/landscape-living-dark.png" alt="Living room, dark" width="320"> |
+| Home | <img src="https://raw.githubusercontent.com/juju35/ha-wall-panel/main/screenshots/landscape-home.png" alt="Home" width="320"> | <img src="https://raw.githubusercontent.com/juju35/ha-wall-panel/main/screenshots/landscape-home-dark.png" alt="Home, dark" width="320"> |
+| Living room, large landscape (1440 × 720) | <img src="https://raw.githubusercontent.com/juju35/ha-wall-panel/main/screenshots/wide-living.png" alt="Living room, large landscape (1440 × 720)" width="320"> | <img src="https://raw.githubusercontent.com/juju35/ha-wall-panel/main/screenshots/wide-living-dark.png" alt="Living room, large landscape (1440 × 720), dark" width="320"> |
+| Home, large landscape (1440 × 720) | <img src="https://raw.githubusercontent.com/juju35/ha-wall-panel/main/screenshots/wide-home.png" alt="Home, large landscape (1440 × 720)" width="320"> | <img src="https://raw.githubusercontent.com/juju35/ha-wall-panel/main/screenshots/wide-home-dark.png" alt="Home, large landscape (1440 × 720), dark" width="320"> |
 
 ### Night screensaver
 
@@ -203,11 +209,15 @@ An administrator's changes are saved to the dashboard at once (the strategy's op
 |---|---|
 | <img src="https://raw.githubusercontent.com/juju35/ha-wall-panel/main/screenshots/saver-dark.png" alt="Night screensaver" width="220"> | <img src="https://raw.githubusercontent.com/juju35/ha-wall-panel/main/screenshots/saver.png" alt="Screensaver, always" width="220"> |
 
-### Portrait, popups and dark theme
+### Portrait and popups
 
-| Portrait (NSPanel Pro 120) | Portrait (Shelly X2i) | Cover controls | Thermostat | Customize | Customize (dark) |
-|---|---|---|---|---|---|
-| <img src="https://raw.githubusercontent.com/juju35/ha-wall-panel/main/screenshots/portrait-living.png" alt="Portrait" width="150"> | <img src="https://raw.githubusercontent.com/juju35/ha-wall-panel/main/screenshots/portrait-x2i-living.png" alt="Portrait, Shelly X2i" width="150"> | <img src="https://raw.githubusercontent.com/juju35/ha-wall-panel/main/screenshots/detail-cover.png" alt="Cover controls" width="200"> | <img src="https://raw.githubusercontent.com/juju35/ha-wall-panel/main/screenshots/detail-climate.png" alt="Thermostat controls" width="200"> | <img src="https://raw.githubusercontent.com/juju35/ha-wall-panel/main/screenshots/customize.png" alt="Customize a tile" width="200"> | <img src="https://raw.githubusercontent.com/juju35/ha-wall-panel/main/screenshots/customize-dark.png" alt="Customize a tile, dark" width="200"> |
+| Screen | Light | Dark |
+|---|---|---|
+| Portrait (NSPanel Pro 120) | <img src="https://raw.githubusercontent.com/juju35/ha-wall-panel/main/screenshots/portrait-living.png" alt="Portrait (NSPanel Pro 120)" width="200"> | <img src="https://raw.githubusercontent.com/juju35/ha-wall-panel/main/screenshots/portrait-living-dark.png" alt="Portrait (NSPanel Pro 120), dark" width="200"> |
+| Portrait (Shelly X2i) | <img src="https://raw.githubusercontent.com/juju35/ha-wall-panel/main/screenshots/portrait-x2i-living.png" alt="Portrait (Shelly X2i)" width="200"> | <img src="https://raw.githubusercontent.com/juju35/ha-wall-panel/main/screenshots/portrait-x2i-living-dark.png" alt="Portrait (Shelly X2i), dark" width="200"> |
+| Cover controls | <img src="https://raw.githubusercontent.com/juju35/ha-wall-panel/main/screenshots/detail-cover.png" alt="Cover controls" width="200"> | <img src="https://raw.githubusercontent.com/juju35/ha-wall-panel/main/screenshots/detail-cover-dark.png" alt="Cover controls, dark" width="200"> |
+| Thermostat | <img src="https://raw.githubusercontent.com/juju35/ha-wall-panel/main/screenshots/detail-climate.png" alt="Thermostat" width="200"> | <img src="https://raw.githubusercontent.com/juju35/ha-wall-panel/main/screenshots/detail-climate-dark.png" alt="Thermostat, dark" width="200"> |
+| Customize a tile | <img src="https://raw.githubusercontent.com/juju35/ha-wall-panel/main/screenshots/customize.png" alt="Customize a tile" width="200"> | <img src="https://raw.githubusercontent.com/juju35/ha-wall-panel/main/screenshots/customize-dark.png" alt="Customize a tile, dark" width="200"> |
 
 ### Animations
 
