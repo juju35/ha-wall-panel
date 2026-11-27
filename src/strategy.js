@@ -18,5 +18,5 @@ class WallPanelViewStrategy extends HTMLElement {
     return view;
   }
 }
-customElements.define("ll-strategy-dashboard-wall-panel", WallPanelDashboardStrategy);
-customElements.define("ll-strategy-view-wall-panel", WallPanelViewStrategy);
+if (!customElements.get("ll-strategy-dashboard-wall-panel")) customElements.define("ll-strategy-dashboard-wall-panel", WallPanelDashboardStrategy);
+if (!customElements.get("ll-strategy-view-wall-panel")) customElements.define("ll-strategy-view-wall-panel", WallPanelViewStrategy);

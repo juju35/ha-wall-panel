@@ -739,9 +739,9 @@ class WallPanelCard extends HTMLElement {
   }
 }
 
-customElements.define(WP_TAG, WallPanelCard);
+if (!customElements.get(WP_TAG)) customElements.define(WP_TAG, WallPanelCard);
 globalThis.customCards = globalThis.customCards || [];
-globalThis.customCards.push({
+if (!globalThis.customCards.some((c) => c.type === WP_TAG)) globalThis.customCards.push({
   type: WP_TAG,
   name: "Wall Panel",
   description: "A whole screen for small wall panels (Sonoff NSPanel Pro, Shelly Wall Display): every room, detected automatically.",
