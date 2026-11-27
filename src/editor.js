@@ -76,4 +76,4 @@ class WallPanelCardEditor extends HTMLElement {
     this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: next }, bubbles: true, composed: true }));
   }
 }
-customElements.define(`${WP_TAG}-editor`, WallPanelCardEditor);
+if (!customElements.get(`${WP_TAG}-editor`)) customElements.define(`${WP_TAG}-editor`, WallPanelCardEditor);

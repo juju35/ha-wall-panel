@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.2 - 2026-11-27
+
+### Fixes
+- Loading the card twice (two resources) no longer throws: its elements and picker entry are registered once.
+
 ## 1.2.1 - 2026-11-24
 
 ### Maintenance
